@@ -1,21 +1,23 @@
 <!DOCTYPE html>
-<html lang="vi" data-bs-theme="dark">
+<html lang="vi" data-bs-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Hệ thống chữ ký số RSA cho doanh nghiệp">
     <title>Hệ Thống Chữ Ký Số | Digital Signature System</title>
-    
+
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- Custom CSS -->
     <link href="styles.css" rel="stylesheet">
 </head>
+
 <body>
     <!-- Loading Spinner -->
     <div class="spinner-overlay" id="loadingSpinner">
@@ -108,9 +110,11 @@
                                     <span id="privateKeyName"></span>
                                 </div>
 
-                                <div class="alert alert-warning mt-3" style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3);">
+                                <div class="alert alert-warning mt-3"
+                                    style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3);">
                                     <i class="bi bi-exclamation-triangle me-2"></i>
-                                    <small><strong>Lưu ý:</strong> Chữ ký số có giá trị pháp lý. Chỉ ký các tài liệu đã được xem xét kỹ.</small>
+                                    <small><strong>Lưu ý:</strong> Chữ ký số có giá trị pháp lý. Chỉ ký các tài liệu đã
+                                        được xem xét kỹ.</small>
                                 </div>
 
                                 <button class="btn btn-gradient w-100 mt-3" id="signBtn" disabled>
@@ -166,9 +170,11 @@
                                     </select>
                                 </div>
 
-                                <div class="alert alert-info mt-3" style="background: rgba(13, 110, 253, 0.1); border-color: rgba(13, 110, 253, 0.3);">
+                                <div class="alert alert-info mt-3"
+                                    style="background: rgba(13, 110, 253, 0.1); border-color: rgba(13, 110, 253, 0.3);">
                                     <i class="bi bi-info-circle me-2"></i>
-                                    <small><strong>Cách thức:</strong> Hệ thống sẽ so sánh hash của file với chữ ký đã giải mã.</small>
+                                    <small><strong>Cách thức:</strong> Hệ thống sẽ so sánh hash của file với chữ ký đã
+                                        giải mã.</small>
                                 </div>
 
                                 <button class="btn btn-gradient-success w-100 mt-3" id="verifyBtn" disabled>
@@ -217,7 +223,8 @@
                         </div>
                     </div>
 
-                    <div class="alert alert-warning mt-4" style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3);">
+                    <div class="alert alert-warning mt-4"
+                        style="background: rgba(255, 193, 7, 0.1); border-color: rgba(255, 193, 7, 0.3);">
                         <i class="bi bi-shield-exclamation me-2"></i>
                         <strong>Bảo mật:</strong> Chỉ người có Private Key tương ứng mới có thể tạo chữ ký hợp lệ.
                     </div>
@@ -248,16 +255,16 @@
                                         <label class="form-label">
                                             <i class="bi bi-person me-1"></i>Họ và Tên *
                                         </label>
-                                        <input type="text" class="form-control" id="genName" 
-                                               placeholder="Nguyễn Văn A" required>
+                                        <input type="text" class="form-control" id="genName" placeholder="Nguyễn Văn A"
+                                            required>
                                     </div>
 
                                     <div class="mb-3">
                                         <label class="form-label">
                                             <i class="bi bi-building me-1"></i>Phòng Ban / Bộ Phận *
                                         </label>
-                                        <input type="text" class="form-control" id="genDepartment" 
-                                               placeholder="Kế toán / IT / Nhân sự..." required>
+                                        <input type="text" class="form-control" id="genDepartment"
+                                            placeholder="Kế toán / IT / Nhân sự..." required>
                                     </div>
 
                                     <div class="mb-4">
@@ -266,7 +273,8 @@
                                         </label>
                                         <select class="form-select" id="genKeySize">
                                             <option value="512">512-bit (Nhanh, thử nghiệm)</option>
-                                            <option value="1024" selected>1024-bit (Khuyến nghị cho doanh nghiệp)</option>
+                                            <option value="1024" selected>1024-bit (Khuyến nghị cho doanh nghiệp)
+                                            </option>
                                             <option value="2048">2048-bit (Bảo mật cao, chậm hơn)</option>
                                         </select>
                                         <small class="text-muted mt-1 d-block">
@@ -314,18 +322,16 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Họ và Tên *</label>
-                            <input type="text" class="form-control" id="regName" 
-                                   placeholder="Nguyễn Văn A" required>
+                            <input type="text" class="form-control" id="regName" placeholder="Nguyễn Văn A" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Phòng Ban *</label>
-                            <input type="text" class="form-control" id="regDepartment" 
-                                   placeholder="IT Security" required>
+                            <input type="text" class="form-control" id="regDepartment" placeholder="IT Security"
+                                required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Public Key File (.key) *</label>
-                            <input type="file" class="form-control" id="regPublicKey" 
-                                   accept=".key" required>
+                            <input type="file" class="form-control" id="regPublicKey" accept=".key" required>
                         </div>
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle me-2"></i>
@@ -349,4 +355,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
