@@ -11,7 +11,11 @@ const state = {
     privateKey: null,
     verifyFile: null,
     signature: null,
-    directory: []
+    directory: [],
+    // PDF Standard Signing
+    pdfSignFile: null,
+    certificate: null,
+    pdfVerifyFile: null
 };
 
 // ==================== DOM ELEMENTS ====================
@@ -27,7 +31,7 @@ const elements = {
     privateKeyName: document.getElementById('privateKeyName'),
     signBtn: document.getElementById('signBtn'),
     signResult: document.getElementById('signResult'),
-    
+
     // Verify
     verifyFileZone: document.getElementById('verifyFileZone'),
     verifyFileInput: document.getElementById('verifyFileInput'),
@@ -40,15 +44,36 @@ const elements = {
     signerSelect: document.getElementById('signerSelect'),
     verifyBtn: document.getElementById('verifyBtn'),
     verifyResult: document.getElementById('verifyResult'),
-    
+
     // Generate
     generateForm: document.getElementById('generateForm'),
     generateResult: document.getElementById('generateResult'),
-    
+
     // Directory
     directoryTable: document.getElementById('directoryTable'),
     registerForm: document.getElementById('registerForm'),
-    
+
+    // PDF Standard Signing
+    pdfSignFileZone: document.getElementById('pdfSignFileZone'),
+    pdfSignFileInput: document.getElementById('pdfSignFileInput'),
+    pdfSignFileInfo: document.getElementById('pdfSignFileInfo'),
+    pdfSignFileName: document.getElementById('pdfSignFileName'),
+    certificateZone: document.getElementById('certificateZone'),
+    certificateInput: document.getElementById('certificateInput'),
+    certificateInfo: document.getElementById('certificateInfo'),
+    certificateName: document.getElementById('certificateName'),
+    certPassword: document.getElementById('certPassword'),
+    signPdfBtn: document.getElementById('signPdfBtn'),
+    signPdfResult: document.getElementById('signPdfResult'),
+    pdfVerifyZone: document.getElementById('pdfVerifyZone'),
+    pdfVerifyInput: document.getElementById('pdfVerifyInput'),
+    pdfVerifyInfo: document.getElementById('pdfVerifyInfo'),
+    pdfVerifyName: document.getElementById('pdfVerifyName'),
+    verifyPdfBtn: document.getElementById('verifyPdfBtn'),
+    verifyPdfResult: document.getElementById('verifyPdfResult'),
+    signatureDetails: document.getElementById('signatureDetails'),
+    signatureList: document.getElementById('signatureList'),
+
     // UI
     loadingSpinner: document.getElementById('loadingSpinner'),
     mainNav: document.getElementById('mainNav')
@@ -57,6 +82,7 @@ const elements = {
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
     initDropZones();
+    initPdfDropZones();
     initNavigation();
     initForms();
     loadDirectory();
@@ -68,17 +94,17 @@ function initNavigation() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const tabId = link.dataset.tab;
-            
+
             // Update active
-            elements.mainNav.querySelectorAll('.nav-link').forEach(l => 
+            elements.mainNav.querySelectorAll('.nav-link').forEach(l =>
                 l.classList.remove('active'));
             link.classList.add('active');
-            
+
             // Show/hide tabs
-            document.querySelectorAll('.tab-content').forEach(tab => 
+            document.querySelectorAll('.tab-content').forEach(tab =>
                 tab.classList.add('d-none'));
             document.getElementById(`${tabId}-tab`).classList.remove('d-none');
-            
+
             // Refresh directory
             if (tabId === 'directory') {
                 loadDirectory();
@@ -95,25 +121,25 @@ function initDropZones() {
         { zone: elements.verifyFileZone, input: elements.verifyFileInput, handler: handleVerifyFile },
         { zone: elements.signatureZone, input: elements.signatureInput, handler: handleSignature }
     ];
-    
+
     zones.forEach(({ zone, input, handler }) => {
         zone.addEventListener('click', () => input.click());
-        
+
         zone.addEventListener('dragover', (e) => {
             e.preventDefault();
             zone.classList.add('dragover');
         });
-        
+
         zone.addEventListener('dragleave', () => {
             zone.classList.remove('dragover');
         });
-        
+
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
             zone.classList.remove('dragover');
             if (e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
         });
-        
+
         input.addEventListener('change', () => {
             if (input.files[0]) handler(input.files[0]);
         });
@@ -168,37 +194,47 @@ function initForms() {
     elements.signerSelect.addEventListener('change', updateVerifyButton);
     elements.generateForm.addEventListener('submit', generateKeys);
     elements.registerForm.addEventListener('submit', registerKey);
+
+    // PDF Standard Signing
+    elements.signPdfBtn.addEventListener('click', signPdfStandard);
+    elements.verifyPdfBtn.addEventListener('click', verifyPdfStandard);
+
+    // Generate Certificate
+    const genCertBtn = document.getElementById('genCertBtn');
+    if (genCertBtn) {
+        genCertBtn.addEventListener('click', generateCertificate);
+    }
 }
 
 // ==================== API CALLS ====================
 async function signDocument() {
     showLoading(true);
     hideResult(elements.signResult);
-    
+
     try {
         const formData = new FormData();
         formData.append('file', state.signFile);
         formData.append('private_key', state.privateKey);
-        
+
         const response = await fetch(`${API_BASE}/sign`, {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Signing failed');
         }
-        
+
         // Download signature
         const blob = await response.blob();
         downloadFile(blob, `${state.signFile.name}.sig`);
-        
-        showResult(elements.signResult, true, 
+
+        showResult(elements.signResult, true,
             `<i class="bi bi-check-circle me-2"></i>Ký thành công! File chữ ký đã tải về.`);
-        
+
     } catch (error) {
-        showResult(elements.signResult, false, 
+        showResult(elements.signResult, false,
             `<i class="bi bi-exclamation-circle me-2"></i>${error.message}`);
     } finally {
         showLoading(false);
@@ -208,25 +244,25 @@ async function signDocument() {
 async function verifyDocument() {
     showLoading(true);
     hideResult(elements.verifyResult);
-    
+
     try {
         const formData = new FormData();
         formData.append('file', state.verifyFile);
         formData.append('signature', state.signature);
         formData.append('key_id', elements.signerSelect.value);
-        
+
         const response = await fetch(`${API_BASE}/verify`, {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Verification failed');
         }
-        
+
         const result = await response.json();
-        
+
         if (result.valid) {
             showResult(elements.verifyResult, true,
                 `<i class="bi bi-shield-check me-2"></i>${result.message}<br>
@@ -235,7 +271,7 @@ async function verifyDocument() {
             showResult(elements.verifyResult, false,
                 `<i class="bi bi-shield-x me-2"></i>${result.message}`);
         }
-        
+
     } catch (error) {
         showResult(elements.verifyResult, false,
             `<i class="bi bi-exclamation-circle me-2"></i>${error.message}`);
@@ -248,39 +284,39 @@ async function generateKeys(e) {
     e.preventDefault();
     showLoading(true);
     hideResult(elements.generateResult);
-    
+
     const name = document.getElementById('genName').value;
     const department = document.getElementById('genDepartment').value;
     const keySize = document.getElementById('genKeySize').value;
-    
+
     try {
         const formData = new FormData();
         formData.append('name', name);
         formData.append('department', department);
         formData.append('key_size', keySize);
-        
+
         const response = await fetch(`${API_BASE}/generate-keys`, {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Generation failed');
         }
-        
+
         const keyId = response.headers.get('X-Key-ID');
         const blob = await response.blob();
         downloadFile(blob, `${name.replace(/\s+/g, '_')}_private.key`);
-        
+
         showResult(elements.generateResult, true,
             `<i class="bi bi-check-circle me-2"></i>Sinh khóa thành công!<br>
             <small class="mt-2 d-block">Key ID: <strong>${keyId}</strong></small>
             <small>Private key đã tải về. Public key đã được đăng ký.</small>`);
-        
+
         elements.generateForm.reset();
         loadDirectory();
-        
+
     } catch (error) {
         showResult(elements.generateResult, false,
             `<i class="bi bi-exclamation-circle me-2"></i>${error.message}`);
@@ -292,31 +328,31 @@ async function generateKeys(e) {
 async function registerKey(e) {
     e.preventDefault();
     showLoading(true);
-    
+
     const name = document.getElementById('regName').value;
     const department = document.getElementById('regDepartment').value;
     const publicKey = document.getElementById('regPublicKey').files[0];
-    
+
     try {
         const formData = new FormData();
         formData.append('name', name);
         formData.append('department', department);
         formData.append('public_key', publicKey);
-        
+
         const response = await fetch(`${API_BASE}/register`, {
             method: 'POST',
             body: formData
         });
-        
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.detail || 'Registration failed');
         }
-        
+
         bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
         elements.registerForm.reset();
         loadDirectory();
-        
+
     } catch (error) {
         alert(`Lỗi: ${error.message}`);
     } finally {
@@ -328,12 +364,12 @@ async function loadDirectory() {
     try {
         const response = await fetch(`${API_BASE}/directory`);
         if (!response.ok) throw new Error('Failed to load');
-        
+
         const data = await response.json();
         state.directory = data.entries || [];
         renderDirectory();
         updateSignerSelect();
-        
+
     } catch (error) {
         console.error('Load directory failed:', error);
         state.directory = [];
@@ -343,16 +379,16 @@ async function loadDirectory() {
 
 async function deleteKey(keyId) {
     if (!confirm('Xác nhận xóa khóa này?')) return;
-    
+
     showLoading(true);
     try {
         const response = await fetch(`${API_BASE}/directory/${keyId}`, {
             method: 'DELETE'
         });
-        
+
         if (!response.ok) throw new Error('Delete failed');
         loadDirectory();
-        
+
     } catch (error) {
         alert(`Lỗi: ${error.message}`);
     } finally {
@@ -372,7 +408,7 @@ function renderDirectory() {
             </tr>`;
         return;
     }
-    
+
     elements.directoryTable.innerHTML = state.directory.map(entry => `
         <tr>
             <td><span class="key-badge">${escapeHtml(entry.id)}</span></td>
@@ -435,6 +471,226 @@ function formatDate(isoString) {
         return date.toLocaleString('vi-VN');
     } catch {
         return isoString;
+    }
+}
+
+// ==================== PDF STANDARD SIGNING ====================
+function initPdfDropZones() {
+    const pdfZones = [
+        { zone: elements.pdfSignFileZone, input: elements.pdfSignFileInput, handler: handlePdfSignFile },
+        { zone: elements.certificateZone, input: elements.certificateInput, handler: handleCertificate },
+        { zone: elements.pdfVerifyZone, input: elements.pdfVerifyInput, handler: handlePdfVerifyFile }
+    ];
+
+    pdfZones.forEach(({ zone, input, handler }) => {
+        if (!zone || !input) return;
+
+        zone.addEventListener('click', () => input.click());
+
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.classList.add('dragover');
+        });
+
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('dragover');
+        });
+
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
+        });
+
+        input.addEventListener('change', () => {
+            if (input.files[0]) handler(input.files[0]);
+        });
+    });
+}
+
+function handlePdfSignFile(file) {
+    state.pdfSignFile = file;
+    elements.pdfSignFileZone.classList.add('has-file');
+    elements.pdfSignFileName.textContent = file.name;
+    elements.pdfSignFileInfo.classList.add('show');
+    updateSignPdfButton();
+}
+
+function handleCertificate(file) {
+    state.certificate = file;
+    elements.certificateZone.classList.add('has-file');
+    elements.certificateName.textContent = file.name;
+    elements.certificateInfo.classList.add('show');
+    updateSignPdfButton();
+}
+
+function handlePdfVerifyFile(file) {
+    state.pdfVerifyFile = file;
+    elements.pdfVerifyZone.classList.add('has-file');
+    elements.pdfVerifyName.textContent = file.name;
+    elements.pdfVerifyInfo.classList.add('show');
+    elements.verifyPdfBtn.disabled = false;
+}
+
+function updateSignPdfButton() {
+    elements.signPdfBtn.disabled = !(state.pdfSignFile && state.certificate);
+}
+
+async function signPdfStandard() {
+    showLoading(true);
+    hideResult(elements.signPdfResult);
+
+    try {
+        const formData = new FormData();
+        formData.append('pdf_file', state.pdfSignFile);
+        formData.append('certificate', state.certificate);
+        formData.append('password', elements.certPassword.value || '');
+
+        const response = await fetch(`${API_BASE}/sign-pdf`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'PDF signing failed');
+        }
+
+        // Get signer name from header
+        const signerName = response.headers.get('X-Signer-Name') || 'Unknown';
+
+        // Download signed PDF
+        const blob = await response.blob();
+        const filename = state.pdfSignFile.name.replace('.pdf', '_signed.pdf');
+        downloadFile(blob, filename);
+
+        showResult(elements.signPdfResult, true,
+            `<i class="bi bi-check-circle me-2"></i>Ký PDF thành công!<br>
+            <small class="mt-2 d-block">Người ký: <strong>${escapeHtml(signerName)}</strong></small>
+            <small>File PDF đã ký được tải về.</small>`);
+
+    } catch (error) {
+        showResult(elements.signPdfResult, false,
+            `<i class="bi bi-exclamation-circle me-2"></i>${error.message}`);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function verifyPdfStandard() {
+    showLoading(true);
+    hideResult(elements.verifyPdfResult);
+    elements.signatureDetails.classList.add('d-none');
+
+    try {
+        const formData = new FormData();
+        formData.append('pdf_file', state.pdfVerifyFile);
+
+        const response = await fetch(`${API_BASE}/verify-pdf`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'PDF verification failed');
+        }
+
+        const result = await response.json();
+
+        if (!result.has_signatures) {
+            showResult(elements.verifyPdfResult, false,
+                `<i class="bi bi-info-circle me-2"></i>${result.message}`);
+        } else if (result.all_valid) {
+            showResult(elements.verifyPdfResult, true,
+                `<i class="bi bi-shield-check me-2"></i>${result.message}`);
+        } else {
+            showResult(elements.verifyPdfResult, false,
+                `<i class="bi bi-shield-x me-2"></i>${result.message}`);
+        }
+
+        // Show signature details
+        if (result.signatures && result.signatures.length > 0) {
+            elements.signatureDetails.classList.remove('d-none');
+            elements.signatureList.innerHTML = result.signatures.map((sig, i) => `
+                <div class="card mb-2" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi ${sig.valid ? 'bi-check-circle text-success' : 'bi-x-circle text-danger'} me-2"></i>
+                                <strong>${escapeHtml(sig.signer)}</strong>
+                                ${sig.organization ? `<span class="text-muted"> - ${escapeHtml(sig.organization)}</span>` : ''}
+                            </span>
+                            <small class="text-muted">${sig.signing_time ? formatDate(sig.signing_time) : 'N/A'}</small>
+                        </div>
+                        ${sig.reason ? `<small class="text-muted d-block">Lý do: ${escapeHtml(sig.reason)}</small>` : ''}
+                        ${sig.location ? `<small class="text-muted d-block">Vị trí: ${escapeHtml(sig.location)}</small>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+    } catch (error) {
+        showResult(elements.verifyPdfResult, false,
+            `<i class="bi bi-exclamation-circle me-2"></i>${error.message}`);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function generateCertificate() {
+    const nameInput = document.getElementById('genCertName');
+    const orgInput = document.getElementById('genCertOrg');
+    const passwordInput = document.getElementById('genCertPassword');
+
+    const name = nameInput.value.trim();
+    if (!name) {
+        alert('Vui lòng nhập tên của bạn');
+        nameInput.focus();
+        return;
+    }
+
+    const password = passwordInput.value.trim();
+    if (!password || password.length < 4) {
+        alert('Mật khẩu phải có ít nhất 4 ký tự');
+        passwordInput.focus();
+        return;
+    }
+
+    showLoading(true);
+
+    try {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('organization', orgInput.value.trim() || 'Test Organization');
+        formData.append('password', password);
+
+        const response = await fetch(`${API_BASE}/generate-certificate`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Certificate generation failed');
+        }
+
+        // Download certificate
+        const blob = await response.blob();
+        const filename = `${name.replace(/\s+/g, '_')}_certificate.pfx`;
+        downloadFile(blob, filename);
+
+        alert(`✓ Certificate đã được tạo và tải về!\n\nTên file: ${filename}\nMật khẩu: ${password}\n\nHãy upload file này vào ô Certificate bên trên.`);
+
+        // Clear inputs
+        nameInput.value = '';
+        orgInput.value = '';
+        passwordInput.value = '';
+
+    } catch (error) {
+        alert(`Lỗi: ${error.message}`);
+    } finally {
+        showLoading(false);
     }
 }
 

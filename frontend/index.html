@@ -42,6 +42,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-tab="pdf-standard">
+                            <i class="bi bi-file-earmark-pdf"></i> Ký PDF Chuẩn
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" data-tab="directory">
                             <i class="bi bi-key"></i> Thư Mục Khóa
                         </a>
@@ -300,6 +305,146 @@
                                 </form>
 
                                 <div class="result-alert" id="generateResult"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: PDF Standard Signing -->
+                <div class="tab-content d-none" id="pdf-standard-tab">
+                    <div class="page-header">
+                        <h1><i class="bi bi-file-earmark-pdf me-2"></i>Ký PDF Chuẩn (PAdES)</h1>
+                        <p>Ký số nhúng trực tiếp vào file PDF theo chuẩn quốc tế</p>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Sign PDF Section -->
+                        <div class="col-lg-6">
+                            <div class="glass-card h-100">
+                                <div class="card-header-custom">
+                                    <div class="card-icon sign">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0">Ký PDF</h5>
+                                        <small class="text-muted">Sử dụng certificate PFX/P12</small>
+                                    </div>
+                                </div>
+
+                                <div class="drop-zone" id="pdfSignFileZone">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                    <p class="mb-0">Kéo thả file PDF cần ký</p>
+                                    <small class="text-muted">Hợp đồng, công văn, báo cáo...</small>
+                                    <input type="file" id="pdfSignFileInput" class="d-none" accept=".pdf">
+                                </div>
+                                <div class="file-info" id="pdfSignFileInfo">
+                                    <i class="bi bi-file-earmark-pdf-fill me-2"></i>
+                                    <span id="pdfSignFileName"></span>
+                                </div>
+
+                                <div class="drop-zone mt-3" id="certificateZone">
+                                    <i class="bi bi-award"></i>
+                                    <p class="mb-0">Upload Certificate (.pfx, .p12)</p>
+                                    <small class="text-muted">Chứng chỉ số của bạn</small>
+                                    <input type="file" id="certificateInput" class="d-none" accept=".pfx,.p12">
+                                </div>
+                                <div class="file-info" id="certificateInfo">
+                                    <i class="bi bi-award-fill me-2"></i>
+                                    <span id="certificateName"></span>
+                                </div>
+
+                                <div class="mt-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-lock me-1"></i>Mật khẩu Certificate
+                                    </label>
+                                    <input type="password" class="form-control" id="certPassword"
+                                        placeholder="Nhập mật khẩu certificate (nếu có)">
+                                </div>
+
+                                <!-- Generate Test Certificate -->
+                                <div class="card mt-3"
+                                    style="background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2);">
+                                    <div class="card-body py-3">
+                                        <h6 class="mb-2">
+                                            <i class="bi bi-plus-circle me-1"></i>Chưa có Certificate?
+                                        </h6>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <input type="text" class="form-control form-control-sm" id="genCertName"
+                                                    placeholder="Tên của bạn">
+                                            </div>
+                                            <div class="col-6">
+                                                <input type="text" class="form-control form-control-sm" id="genCertOrg"
+                                                    placeholder="Tổ chức (tuỳ chọn)">
+                                            </div>
+                                        </div>
+                                        <input type="password" class="form-control form-control-sm mt-2"
+                                            id="genCertPassword" placeholder="Mật khẩu certificate (tối thiểu 4 ký tự)">
+                                        <button class="btn btn-outline-light btn-sm w-100 mt-2" id="genCertBtn">
+                                            <i class="bi bi-download me-1"></i>Tạo Certificate Test
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-3"
+                                    style="background: rgba(13, 110, 253, 0.1); border-color: rgba(13, 110, 253, 0.3);">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <small><strong>PAdES:</strong> Chữ ký nhúng vào PDF, có thể mở bằng Adobe Reader
+                                        và kiểm tra chữ ký trực tiếp.</small>
+                                </div>
+
+                                <button class="btn btn-gradient w-100 mt-3" id="signPdfBtn" disabled>
+                                    <i class="bi bi-file-earmark-pdf me-2"></i>Ký PDF
+                                </button>
+
+                                <div class="result-alert" id="signPdfResult"></div>
+                            </div>
+                        </div>
+
+                        <!-- Verify PDF Section -->
+                        <div class="col-lg-6">
+                            <div class="glass-card h-100">
+                                <div class="card-header-custom">
+                                    <div class="card-icon verify">
+                                        <i class="bi bi-patch-check"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0">Xác Minh PDF</h5>
+                                        <small class="text-muted">Kiểm tra chữ ký trong PDF</small>
+                                    </div>
+                                </div>
+
+                                <div class="drop-zone" id="pdfVerifyZone">
+                                    <i class="bi bi-file-earmark-check"></i>
+                                    <p class="mb-0">Kéo thả PDF đã ký</p>
+                                    <small class="text-muted">Kiểm tra chữ ký bên trong</small>
+                                    <input type="file" id="pdfVerifyInput" class="d-none" accept=".pdf">
+                                </div>
+                                <div class="file-info" id="pdfVerifyInfo">
+                                    <i class="bi bi-file-earmark-check-fill me-2"></i>
+                                    <span id="pdfVerifyName"></span>
+                                </div>
+
+                                <div class="alert alert-secondary mt-3"
+                                    style="background: rgba(108, 117, 125, 0.1); border-color: rgba(108, 117, 125, 0.3);">
+                                    <i class="bi bi-shield-check me-2"></i>
+                                    <small><strong>Lưu ý:</strong> Hệ thống sẽ kiểm tra tất cả chữ ký trong PDF
+                                        và hiển thị thông tin người ký.</small>
+                                </div>
+
+                                <button class="btn btn-gradient-success w-100 mt-3" id="verifyPdfBtn" disabled>
+                                    <i class="bi bi-patch-check me-2"></i>Xác Minh Chữ Ký
+                                </button>
+
+                                <div class="result-alert" id="verifyPdfResult"></div>
+
+                                <!-- Signature Details -->
+                                <div id="signatureDetails" class="mt-3 d-none">
+                                    <h6 class="text-muted mb-2">
+                                        <i class="bi bi-list-ul me-1"></i>Chi tiết chữ ký:
+                                    </h6>
+                                    <div id="signatureList"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
