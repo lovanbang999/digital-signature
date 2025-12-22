@@ -1,1 +1,48 @@
-/backend/venv
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+backend/venv/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+log/
+
+# Build / Distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / Coverage
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.swp
