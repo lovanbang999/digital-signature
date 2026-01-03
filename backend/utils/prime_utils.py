@@ -1,14 +1,9 @@
-# Module sinh và kiểm tra số nguyên tố
-
 import random
 from .math_utils import power_mod
 
+# Test Miller-Rabin kiểm tra số nguyên tố
+# n: số cần kiểm tra
 def miller_rabin(n, k=5):
-    """
-    Test Miller-Rabin kiểm tra số nguyên tố
-    n: số cần kiểm tra
-    k: số lần lặp (mặc định 5)
-    """
     if n < 2:
         return False
     if n == 2 or n == 3:
@@ -39,8 +34,8 @@ def miller_rabin(n, k=5):
     
     return True
 
+# Sinh số nguyên tố ngẫu nhiên có độ dài bits
 def generate_prime(bits=16):
-    # Sinh số nguyên tố ngẫu nhiên có độ dài bits
     while True:
         n = random.getrandbits(bits)
         n |= (1 << (bits - 1))  # Set bit cao nhất

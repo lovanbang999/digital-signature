@@ -1,16 +1,12 @@
-# Module chứa các hàm toán học cơ bản cho RSA
-
+# Tính ước chung lớn nhất
 def gcd(a, b):
-    """Tính ước chung lớn nhất"""
     while b != 0:
         a, b = b, a % b
     return a
 
+# Euclid mở rộng:
+# trả về (g, x, y) sao cho a*x + b*y = g = gcd(a, b)
 def extended_gcd(a, b):
-    """
-    Extended Euclidean Algorithm
-    Trả về (gcd, x, y) sao cho a*x + b*y = gcd(a,b)
-    """
     if a == 0:
         return b, 0, 1
     
@@ -20,8 +16,8 @@ def extended_gcd(a, b):
     
     return gcd_val, x, y
 
+# Tính nghịch đảo modulo: tìm x sao cho (a*x) % m = 1
 def mod_inverse(a, m):
-    """Tính nghịch đảo modulo"""
     gcd_val, x, y = extended_gcd(a, m)
     
     if gcd_val != 1:
@@ -29,11 +25,8 @@ def mod_inverse(a, m):
     
     return (x % m + m) % m
 
+# Tính (base^exponent) % modulus hiệu quả Sử dụng thuật toán "Square and Multiply"
 def power_mod(base, exponent, modulus):
-    """
-    Tính (base^exponent) % modulus hiệu quả
-    Sử dụng thuật toán "Square and Multiply"
-    """
     if modulus == 1:
         return 0
     
