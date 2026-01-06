@@ -45,7 +45,7 @@ pip install -r requirements.txt
 ### Chạy server
 ```bash
 cd backend
-python main.py
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Server sẽ chạy tại: http://localhost:8000

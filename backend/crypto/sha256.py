@@ -59,24 +59,13 @@ class SHA256:
             maj = (a & b) ^ (a & c) ^ (b & c)
             temp2 = (S0 + maj) & 0xFFFFFFFF
             
-            h = g
-            g = f
-            f = e
-            e = (d + temp1) & 0xFFFFFFFF
-            d = c
-            c = b
-            b = a
-            a = (temp1 + temp2) & 0xFFFFFFFF
-        
-        # Cộng kết quả vào hash values
-        self.h[0] = (self.h[0] + a) & 0xFFFFFFFF
-        self.h[1] = (self.h[1] + b) & 0xFFFFFFFF
-        self.h[2] = (self.h[2] + c) & 0xFFFFFFFF
-        self.h[3] = (self.h[3] + d) & 0xFFFFFFFF
-        self.h[4] = (self.h[4] + e) & 0xFFFFFFFF
-        self.h[5] = (self.h[5] + f) & 0xFFFFFFFF
-        self.h[6] = (self.h[6] + g) & 0xFFFFFFFF
-        self.h[7] = (self.h[7] + h) & 0xFFFFFFFF
+            a, b, c, d, e, f, g, h = (
+                (temp1 + temp2) & 0xFFFFFFFF, a, b, c,
+                (d + temp1) & 0xFFFFFFFF, e, f, g
+            )
+        # Cộng kết quả
+        for i, val in enumerate([a, b, c, d, e, f, g, h]):
+            self.h[i] = (self.h[i] + val) & 0xFFFFFFFF
     
     def hash(self, message):        
         if isinstance(message, str):
@@ -87,16 +76,13 @@ class SHA256:
             0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
             0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
         ]
-        
         padded_message = self.padding(message)
         
         # Xử lý từng chunk 512-bit (64 bytes)
         for i in range(0, len(padded_message), 64):
             chunk = padded_message[i:i+64]
             self.process_chunk(chunk)
-        
         digest = struct.pack('>8I', *self.h)
-        
         return digest.hex()
     
     def hash_int(self, message):

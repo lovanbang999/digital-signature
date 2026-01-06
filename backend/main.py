@@ -1,290 +1,136 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
-import uuid
-import base64
-import sys
-import os
+import base64, sys, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from models import KeyEntry, VerifyResponse, DirectoryResponse, key_directory
+# Response model cho signature verification
+class VerifyResponse(BaseModel):
+    valid: bool
+    message: str
 from signature.digital_signature import DigitalSignature
 from signature.pdf_signature import PdfSigner
 
-# App setup
 app = FastAPI(
     title="Digital Signature API",
     description="RSA Digital Signature System - Custom RSA + SHA-256",
     version="3.0.0"
 )
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
-# Helper functions
+# Chuyển tuple key thành string để lưu/gửi
 def key_to_str(key: tuple) -> str:
     return f"{key[0]}:{key[1]}"
 
+# Parse string thành tuple key
 def str_to_key(s: str) -> tuple:
-    try:
-        parts = s.strip().split(':')
-        return (int(parts[0]), int(parts[1]))
-    except Exception as e:
-        raise ValueError(f"Invalid key format: {e}")
+    parts = s.strip().split(':')
+    if len(parts) != 2:
+        raise ValueError("Key phải có format e:n hoặc d:n")
+    return (int(parts[0]), int(parts[1]))
 
-# API Endpoints
+# Health check
 @app.get("/")
 async def root():
+    return {"status": "ok", "message": "Digital Signature API - Custom RSA + SHA-256", "version": "3.0.0"}
+
+# Tạo cặp khóa RSA mới - trả về cả public và private key
+@app.post("/generate-keys")
+async def generate_keys(name: str = Form(...), department: str = Form(...), key_size: int = Form(1024)):
+    if key_size not in [512, 1024, 2048]:
+        raise HTTPException(400, "Key size must be 512, 1024, or 2048")
+    ds = DigitalSignature(key_size=key_size)
+    public_key, private_key = ds.generate_keys(verbose=False)
     return {
-        "status": "ok",
-        "message": "Digital Signature API - Custom RSA + SHA-256",
-        "version": "3.0.0"
+        "public_key": key_to_str(public_key),
+        "private_key": key_to_str(private_key),
+        "name": name,
+        "department": department
     }
 
-# Sinh cặp khóa RSA mới
-@app.post("/generate-keys")
-async def generate_keys(
-    name: str = Form(...),
-    department: str = Form(...),
-    key_size: int = Form(1024)
-):
-    try:
-        if key_size not in [512, 1024, 2048]:
-            raise HTTPException(status_code=400, detail="Key size must be 512, 1024, or 2048")
-        
-        ds = DigitalSignature(key_size=key_size)
-        public_key, private_key = ds.generate_keys(verbose=False)
-        
-        key_id = str(uuid.uuid4())[:8]
-        
-        key_directory[key_id] = KeyEntry(
-            id=key_id,
-            name=name,
-            department=department,
-            public_key=key_to_str(public_key),
-            created_at=datetime.now().isoformat()
-        )
-        
-        private_key_str = key_to_str(private_key)
-        
-        return Response(
-            content=private_key_str.encode('utf-8'),
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename={name.replace(' ', '_')}_private.key",
-                "X-Key-ID": key_id
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Key generation failed: {str(e)}")
-
-# Ký file với private key
+# Ký file bằng private key
 @app.post("/sign")
-async def sign_file(
-    file: UploadFile = File(...),
-    private_key: UploadFile = File(...)
-):
+async def sign_file(file: UploadFile = File(...), private_key: UploadFile = File(...)):
+    file_data = await file.read()
+    key_data = await private_key.read()
     try:
-        file_data = await file.read()
-        key_data = await private_key.read()
         priv_key = str_to_key(key_data.decode('utf-8'))
-        
-        # Tính key_size từ modulus n của key
-        key_size = priv_key[1].bit_length()
-        
-        ds = DigitalSignature(key_size=key_size)
-        signature = ds.sign(file_data, private_key=priv_key)
-        
-        signature_bytes = str(signature).encode('utf-8')
-        signature_b64 = base64.b64encode(signature_bytes)
-        
-        return Response(
-            content=signature_b64,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename={file.filename}.sig"
-            }
-        )
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid key: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Signing failed: {str(e)}")
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(400, "Private key không hợp lệ")
+    key_size = priv_key[1].bit_length()
+    ds = DigitalSignature(key_size=key_size)
+    signature = ds.sign(file_data, private_key=priv_key)
+    signature_b64 = base64.b64encode(str(signature).encode('utf-8'))
+    return Response(
+        content=signature_b64, media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={file.filename}.sig"}
+    )
 
-# Xác minh chữ ký của file
+# Xác minh chữ ký - chỉ dùng upload public key
 @app.post("/verify", response_model=VerifyResponse)
 async def verify_file(
-    file: UploadFile = File(...),
+    file: UploadFile = File(...), 
     signature: UploadFile = File(...),
-    key_id: Optional[str] = Form(None),
-    public_key_file: Optional[UploadFile] = File(None)
+    public_key_file: UploadFile = File(...)
 ):
+    file_data = await file.read()
+    sig_data = await signature.read()
     try:
-        file_data = await file.read()
-        
-        sig_data = await signature.read()
-        sig_bytes = base64.b64decode(sig_data)
-        sig_int = int(sig_bytes.decode('utf-8'))
-        
-        if key_id and key_id in key_directory:
-            entry = key_directory[key_id]
-            pub_key = str_to_key(entry.public_key)
-            signer = f"{entry.name} ({entry.department})"
-        elif public_key_file:
-            key_data = await public_key_file.read()
-            pub_key = str_to_key(key_data.decode('utf-8'))
-            signer = "Uploaded Key"
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Must provide either key_id or public_key_file"
-            )
-        
-        # Tính key_size từ modulus n của key
-        key_size = pub_key[1].bit_length()
-        
-        ds = DigitalSignature(key_size=key_size)
-        valid = ds.verify(file_data, sig_int, public_key=pub_key)
-        
-        return VerifyResponse(
-            valid=valid,
-            message=(
-                "✓ CHỮ KÝ HỢP LỆ\n"
-                "• Tài liệu KHÔNG bị sửa đổi\n"
-                "• Người ký XÁC THỰC đúng\n"
-                "• Không thể phủ nhận đã ký"
-            ) if valid else (
-                "✗ CHỮ KÝ KHÔNG HỢP LỆ\n"
-                "• Tài liệu có thể đã bị SỬA ĐỔI\n"
-                "• HOẶC sai người ký\n"
-                "⚠️ CẢNH BÁO: Không sử dụng tài liệu này!"
-            ),
-            signer=signer if valid else None
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
-
-# Lấy danh sách public keys đã đăng ký
-@app.get("/directory", response_model=DirectoryResponse)
-async def get_directory():
-    entries = [entry for entry in key_directory.values()]
-    return DirectoryResponse(entries=entries)
-
-# Đăng ký public key vào directory
-@app.post("/register")
-async def register_key(
-    name: str = Form(...),
-    department: str = Form(...),
-    public_key: UploadFile = File(...)
-):
+        sig_int = int(base64.b64decode(sig_data).decode('utf-8'))
+    except:
+        raise HTTPException(400, "Signature file bị lỗi")
+    
+    key_data = await public_key_file.read()
     try:
-        key_data = await public_key.read()
-        pub_key_str = key_data.decode('utf-8')
-        str_to_key(pub_key_str)
-        
-        key_id = str(uuid.uuid4())[:8]
-        
-        key_directory[key_id] = KeyEntry(
-            id=key_id,
-            name=name,
-            department=department,
-            public_key=pub_key_str,
-            created_at=datetime.now().isoformat()
-        )
-        
-        return {"message": "Public key registered successfully", "key_id": key_id}
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid public key: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        pub_key = str_to_key(key_data.decode('utf-8'))
+    except:
+        raise HTTPException(400, "Public key không đúng format")
+    
+    key_size = pub_key[1].bit_length()
+    ds = DigitalSignature(key_size=key_size)
+    valid = ds.verify(file_data, sig_int, public_key=pub_key)
+    return VerifyResponse(
+        valid=valid,
+        message="✓ HỢP LỆ" if valid else "✗ KHÔNG HỢP LỆ"
+    )
 
-# Xóa public key khỏi directory
-@app.delete("/directory/{key_id}")
-async def delete_key(key_id: str):
-    if key_id not in key_directory:
-        raise HTTPException(status_code=404, detail="Key not found")
-    del key_directory[key_id]
-    return {"message": "Key deleted successfully"}
-
-# Ký PDF theo chuẩn PAdES với certificate PFX/P12
+# Ký PDF với certificate
 @app.post("/sign-pdf")
-async def sign_pdf_standard(
-    pdf_file: UploadFile = File(...),
-    certificate: UploadFile = File(...),
-    password: str = Form("")
-):
+async def sign_pdf_standard(pdf_file: UploadFile = File(...), certificate: UploadFile = File(...), password: str = Form("")):
+    pdf_data = await pdf_file.read()
+    cert_data = await certificate.read()
     try:
-        pdf_data = await pdf_file.read()
-        cert_data = await certificate.read()
-        
         signed_pdf, signer_name = await PdfSigner.sign_async(pdf_data, cert_data, password)
-        
-        signed_filename = pdf_file.filename.replace('.pdf', '_signed.pdf')
-        
-        return Response(
-            content=signed_pdf,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={signed_filename}",
-                "X-Signer-Name": signer_name
-            }
-        )
-        
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF signing failed: {str(e)}")
+        raise HTTPException(400, str(e))
+    signed_filename = pdf_file.filename.replace('.pdf', '_signed.pdf')
+    return Response(
+        content=signed_pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={signed_filename}", "X-Signer-Name": signer_name}
+    )
 
-# Xác minh chữ ký trong PDF
+# Verify PDF đã ký
 @app.post("/verify-pdf")
 async def verify_pdf_standard(pdf_file: UploadFile = File(...)):
-    try:
-        pdf_data = await pdf_file.read()
-        result = PdfSigner.verify(pdf_data)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF verification failed: {str(e)}")
+    pdf_data = await pdf_file.read()
+    return PdfSigner.verify(pdf_data)
 
-# Sinh certificate test (self-signed) để thử nghiệm ký PDF
+# Tạo certificate test để thử ký PDF
 @app.post("/generate-certificate")
-async def generate_test_certificate(
-    name: str = Form(...),
-    organization: str = Form("Test Organization"),
-    password: str = Form("123456")
-):
-    try:
-        pfx_data, cert_password = PdfSigner.generate_test_certificate(
-            name=name,
-            organization=organization,
-            password=password
-        )
-        
-        filename = f"{name.replace(' ', '_')}_certificate.pfx"
-        
-        return Response(
-            content=pfx_data,
-            media_type="application/x-pkcs12",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}",
-                "X-Certificate-Password": cert_password
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Certificate generation failed: {str(e)}")
+async def generate_test_certificate(name: str = Form(...), organization: str = Form("Test Organization"), password: str = Form("123456")):
+    pfx_data, cert_password = PdfSigner.generate_test_certificate(name=name, organization=organization, password=password)
+    filename = f"{name.replace(' ', '_')}_certificate.pfx"
+    return Response(
+        content=pfx_data, media_type="application/x-pkcs12",
+        headers={"Content-Disposition": f"attachment; filename={filename}", "X-Certificate-Password": cert_password}
+    )
 
 if __name__ == "__main__":
     import uvicorn
