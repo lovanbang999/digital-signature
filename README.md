@@ -1,16 +1,16 @@
-# 🔐 Digital Signature System
+# Digital Signature System
 
 Hệ thống chữ ký số tự xây dựng từ đầu (from scratch) sử dụng **RSA + SHA-256** với **PKCS#1 v1.5 padding**.
 
-## ✨ Tính năng
+## Tính năng
 
-- ✅ **RSA Key Generation** - Sinh cặp khóa RSA (512/1024/2048 bit)
-- ✅ **SHA-256 Hashing** - Thuật toán băm tự cài đặt theo chuẩn FIPS 180-4
-- ✅ **Digital Signature** - Ký và xác thực văn bản với PKCS#1 v1.5
-- ✅ **PDF Signing** - Ký file PDF theo chuẩn PAdES (sử dụng pyHanko)
-- ✅ **Web Interface** - Giao diện web thân thiện
+- **RSA Key Generation** - Sinh cặp khóa RSA (512/1024/2048 bit)
+- **SHA-256 Hashing** - Thuật toán băm tự cài đặt theo chuẩn FIPS 180-4
+- **Digital Signature** - Ký và xác thực văn bản với PKCS#1 v1.5
+- **PDF Signing** - Ký file PDF theo chuẩn PAdES (sử dụng pyHanko)
+- **Web Interface** - Giao diện web thân thiện
 
-## 📁 Cấu trúc project
+## Cấu trúc project
 
 ```
 digital-signature/
@@ -31,7 +31,7 @@ digital-signature/
     └── styles.css
 ```
 
-## 🚀 Cài đặt và chạy
+## Cài đặt và chạy
 
 ### Yêu cầu
 - Python 3.8+
@@ -53,7 +53,7 @@ Server sẽ chạy tại: http://localhost:8000
 ### API Documentation
 Truy cập: http://localhost:8000/docs
 
-## 🔧 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -64,7 +64,7 @@ Truy cập: http://localhost:8000/docs
 | POST | `/sign-pdf` | Ký PDF (PAdES) |
 | POST | `/verify-pdf` | Xác thực PDF |
 
-## 📐 Thuật toán
+## Thuật toán
 
 ### RSA Key Generation
 1. Sinh 2 số nguyên tố lớn p, q (Miller-Rabin test)
@@ -89,6 +89,6 @@ Verify: decrypted = signature^e mod n
 EM = 0x00 || 0x01 || PS || 0x00 || DigestInfo || Hash
 ```
 
-## 📝 License
+## License
 
 MIT License
